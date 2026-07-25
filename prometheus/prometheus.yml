@@ -19,9 +19,13 @@ scrape_configs:
     static_configs:
       - targets:
           # ▼▼ AGREGA AQUÍ LAS URLs A MONITOREAR ▼▼
+          # No importa dónde esté alojado cada sitio: el chequeo es una
+          # petición HTTP externa, como la de un visitante real.
           - https://favric.cl
-          # - https://otro-sitio.cl
-          # - https://cliente-wordpress.com
+          - https://laderasdelrupanco.cl    # WordPress en este servidor
+          - https://idrispatagonia.com     # WordPress en otro hosting
+          - https://patagoniafarming.com   # WordPress en otro hosting
+          - https://marandino.com
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
@@ -30,26 +34,11 @@ scrape_configs:
       - target_label: __address__
         replacement: blackbox:9115
 
-  # ── Servicios locales del servidor (los de tu docker ps) ──
-  - job_name: blackbox_local
-    metrics_path: /probe
-    params:
-      module: [http_alive]
-    static_configs:
-      - targets:
-          # ▼▼ Descomenta los que quieras vigilar ▼▼
-          # - http://host.docker.internal:8080   # fvx_suscription_backend
-          # - http://host.docker.internal:8051   # fvx-ticket-bknd
-          # - http://host.docker.internal:8001   # meter-scanner-api
-          # - http://host.docker.internal:8009   # fvx-backend-med
-          - http://host.docker.internal:8000     # ms-catalogue (aparece unhealthy en docker ps)
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: __param_target
-      - source_labels: [__param_target]
-        target_label: instance
-      - target_label: __address__
-        replacement: blackbox:9115
+  # ── (Opcional) Servicios internos del servidor sin URL pública ──
+  # Si algún día quieres vigilar los backends de tu docker ps (ej: el
+  # puerto 8000 de ms-catalogue), se agrega otro job igual al de arriba
+  # pero con targets tipo http://host.docker.internal:<puerto> y módulo
+  # http_alive. Avísame y lo armamos.
 
   # ── Fase 2: aquí irá el scrape del plugin de WordPress ──
   # - job_name: wordpress_plugin
