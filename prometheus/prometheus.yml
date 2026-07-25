@@ -40,11 +40,21 @@ scrape_configs:
   # pero con targets tipo http://host.docker.internal:<puerto> y módulo
   # http_alive. Avísame y lo armamos.
 
-  # ── Fase 2: aquí irá el scrape del plugin de WordPress ──
-  # - job_name: wordpress_plugin
-  #   metrics_path: /wp-json/tu-monitor/v1/metrics
+  # ── Fase 2: métricas internas de WordPress (plugin favric-monitor) ──
+  # Para activar en un sitio:
+  #   1) Instala wordpress-plugin/favric-monitor y copia el token
+  #      (wp-admin → Ajustes → Favric Monitor)
+  #   2) En el servidor guarda el token FUERA de git:
+  #        mkdir -p prometheus/secrets
+  #        echo -n 'EL_TOKEN' > prometheus/secrets/laderas.token
+  #   3) Descomenta el bloque y: docker compose restart prometheus
+  #
+  # - job_name: wp_laderas
+  #   metrics_path: /wp-json/favric-monitor/v1/metrics
   #   scheme: https
+  #   scrape_interval: 5m        # métricas internas: no hace falta cada 30s
   #   authorization:
-  #     credentials: <token-del-sitio>
+  #     type: Bearer
+  #     credentials_file: /etc/prometheus/secrets/laderas.token
   #   static_configs:
-  #     - targets: ["cliente-wordpress.com"]
+  #     - targets: ["laderasdelrupanco.cl"]

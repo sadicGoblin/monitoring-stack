@@ -10,6 +10,7 @@ services:
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ./prometheus/secrets:/etc/prometheus/secrets:ro   # tokens de plugins WP (fuera de git)
       - prometheus_data:/prometheus
     ports:
       - "127.0.0.1:9090:9090"   # solo accesible desde el servidor (ssh tunnel si necesitas la UI)
@@ -39,11 +40,12 @@ services:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?define GRAFANA_ADMIN_PASSWORD en .env}
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=https://monitor.favric.cl
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
     ports:
-      - "3000:3000"   # UI web — puerto libre según tu docker ps
+      - "127.0.0.1:3000:3000"   # solo loopback: se accede vía nginx en monitor.favric.cl
     depends_on:
       - prometheus
     networks:

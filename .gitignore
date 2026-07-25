@@ -1,5 +1,9 @@
 # Credenciales reales — nunca subir
 .env
+prometheus/secrets/
+
+# Builds del plugin de WordPress (se generan con zip -r)
+*.zip
 
 # Datos locales si algún día cambias los named volumes por bind mounts
 data/
