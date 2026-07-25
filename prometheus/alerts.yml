@@ -27,3 +27,32 @@ groups:
         annotations:
           summary: "SSL por vencer: {{ $labels.instance }}"
           description: "El certificado de {{ $labels.instance }} vence en {{ $value | printf \"%.0f\" }} días."
+
+  - name: wordpress
+    rules:
+      - alert: PluginsDesactualizados
+        expr: wp_plugin_updates_pending > 0
+        for: 24h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Plugins desactualizados en {{ $labels.instance }}"
+          description: "{{ $labels.instance }} lleva más de 24h con {{ $value | printf \"%.0f\" }} plugin(s) sin actualizar."
+
+      - alert: PicoLoginsFallidos
+        expr: increase(wp_login_failures_total[1h]) > 50
+        labels:
+          severity: critical
+        annotations:
+          summary: "Posible ataque de fuerza bruta en {{ $labels.instance }}"
+          description: "{{ $value | printf \"%.0f\" }} intentos de login fallidos en la última hora en {{ $labels.instance }}."
+
+      - alert: WPCronAtrasado
+        expr: wp_cron_overdue_events > 0
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "WP-Cron atrasado en {{ $labels.instance }}"
+          description: "{{ $labels.instance }} tiene {{ $value | printf \"%.0f\" }} eventos de cron atrasados hace más de 1 hora."
+
