@@ -1,0 +1,29 @@
+groups:
+  - name: sitios
+    rules:
+      - alert: SitioCaido
+        expr: probe_success == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Sitio caído: {{ $labels.instance }}"
+          description: "{{ $labels.instance }} no responde hace más de 2 minutos."
+
+      - alert: SitioLento
+        expr: probe_duration_seconds > 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Sitio lento: {{ $labels.instance }}"
+          description: "{{ $labels.instance }} tarda {{ $value | printf \"%.1f\" }}s en responder (>3s por 5 min)."
+
+      - alert: CertificadoSSLPorVencer
+        expr: (probe_ssl_earliest_cert_expiry - time()) / 86400 < 15
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "SSL por vencer: {{ $labels.instance }}"
+          description: "El certificado de {{ $labels.instance }} vence en {{ $value | printf \"%.0f\" }} días."

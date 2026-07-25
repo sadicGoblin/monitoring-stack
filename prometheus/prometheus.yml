@@ -1,0 +1,61 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  # Auto-monitoreo del propio Prometheus
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # ── Chequeos externos de sitios web (WordPress o cualquier página) ──
+  - job_name: blackbox_http
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          # ▼▼ AGREGA AQUÍ LAS URLs A MONITOREAR ▼▼
+          - https://favric.cl
+          # - https://otro-sitio.cl
+          # - https://cliente-wordpress.com
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+  # ── Servicios locales del servidor (los de tu docker ps) ──
+  - job_name: blackbox_local
+    metrics_path: /probe
+    params:
+      module: [http_alive]
+    static_configs:
+      - targets:
+          # ▼▼ Descomenta los que quieras vigilar ▼▼
+          # - http://host.docker.internal:8080   # fvx_suscription_backend
+          # - http://host.docker.internal:8051   # fvx-ticket-bknd
+          # - http://host.docker.internal:8001   # meter-scanner-api
+          # - http://host.docker.internal:8009   # fvx-backend-med
+          - http://host.docker.internal:8000     # ms-catalogue (aparece unhealthy en docker ps)
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+  # ── Fase 2: aquí irá el scrape del plugin de WordPress ──
+  # - job_name: wordpress_plugin
+  #   metrics_path: /wp-json/tu-monitor/v1/metrics
+  #   scheme: https
+  #   authorization:
+  #     credentials: <token-del-sitio>
+  #   static_configs:
+  #     - targets: ["cliente-wordpress.com"]

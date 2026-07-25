@@ -1,0 +1,5 @@
+# Credenciales reales — nunca subir
+.env
+
+# Datos locales si algún día cambias los named volumes por bind mounts
+data/

@@ -1,0 +1,58 @@
+services:
+  prometheus:
+    image: prom/prometheus:v3.4.1
+    container_name: monitor_prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"   # solo accesible desde el servidor (ssh tunnel si necesitas la UI)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # permite scrapear servicios corriendo en el host
+    networks:
+      - monitoring
+
+  blackbox:
+    image: prom/blackbox-exporter:v0.26.0
+    container_name: monitor_blackbox
+    restart: unless-stopped
+    volumes:
+      - ./blackbox/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    ports:
+      - "127.0.0.1:9115:9115"   # solo loopback, para debug
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # permite probar servicios locales del host
+    networks:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:11.6.0
+    container_name: monitor_grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?define GRAFANA_ADMIN_PASSWORD en .env}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"   # UI web — puerto libre según tu docker ps
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  monitoring:
+    driver: bridge

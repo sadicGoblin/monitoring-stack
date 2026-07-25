@@ -1,0 +1,23 @@
+modules:
+  # Chequeo HTTP estándar: espera 2xx, sigue redirects, valida SSL
+  http_2xx:
+    prober: http
+    timeout: 10s
+    http:
+      preferred_ip_protocol: ip4
+      follow_redirects: true
+      valid_status_codes: []   # vacío = cualquier 2xx
+
+  # Para endpoints internos que responden 401/403 (igual prueba que están vivos)
+  http_alive:
+    prober: http
+    timeout: 10s
+    http:
+      preferred_ip_protocol: ip4
+      follow_redirects: true
+      valid_status_codes: [200, 301, 302, 401, 403]
+
+  # Chequeo TCP simple (ej: puertos de BD)
+  tcp_connect:
+    prober: tcp
+    timeout: 10s
