@@ -1,6 +1,7 @@
 # Credenciales reales — nunca subir
 .env
 prometheus/secrets/
+alertmanager/secrets/
 
 # Builds del plugin de WordPress (se generan con zip -r)
 *.zip

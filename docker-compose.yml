@@ -19,6 +19,22 @@ services:
     networks:
       - monitoring
 
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    container_name: monitor_alertmanager
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./alertmanager/secrets:/etc/alertmanager/secrets:ro   # token del bot (fuera de git)
+      - alertmanager_data:/alertmanager
+    ports:
+      - "127.0.0.1:9093:9093"   # solo loopback, para debug
+    networks:
+      - monitoring
+
   blackbox:
     image: prom/blackbox-exporter:v0.26.0
     container_name: monitor_blackbox
@@ -55,6 +71,7 @@ services:
 volumes:
   prometheus_data:
   grafana_data:
+  alertmanager_data:
 
 networks:
   monitoring:

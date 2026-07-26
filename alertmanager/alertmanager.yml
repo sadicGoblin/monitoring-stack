@@ -1,0 +1,28 @@
+route:
+  receiver: telegram
+  group_by: [alertname, instance]
+  group_wait: 30s        # espera 30s por si llegan alertas relacionadas juntas
+  group_interval: 5m
+  repeat_interval: 4h    # re-notifica cada 4h si la alerta sigue activa
+
+receivers:
+  - name: telegram
+    telegram_configs:
+      - bot_token_file: /etc/alertmanager/secrets/telegram_bot.token
+        # ▼▼ REEMPLAZA por tu chat_id real (número que entrega getUpdates) ▼▼
+        chat_id: 111111111
+        parse_mode: HTML
+        send_resolved: true   # también avisa cuando el problema se resuelve
+        message: |-
+          {{ if eq .Status "firing" }}🔴 <b>ALERTA</b>{{ else }}✅ <b>RESUELTO</b>{{ end }}
+          {{ range .Alerts }}
+          <b>{{ .Annotations.summary }}</b>
+          {{ .Annotations.description }}
+          {{ end }}
+
+# Si un sitio está caído, no tiene sentido notificar además que está
+# lento o con contenido raro: la caída las explica.
+inhibit_rules:
+  - source_matchers: ['alertname="SitioCaido"']
+    target_matchers: ['alertname=~"SitioLento|ContenidoSospechoso"']
+    equal: [instance]
