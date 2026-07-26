@@ -18,14 +18,33 @@ scrape_configs:
       module: [http_2xx]
     static_configs:
       - targets:
-          # ▼▼ AGREGA AQUÍ LAS URLs A MONITOREAR ▼▼
+          # ▼▼ Sitios NO-WordPress (chequeo HTTP genérico) ▼▼
           # No importa dónde esté alojado cada sitio: el chequeo es una
           # petición HTTP externa, como la de un visitante real.
           - https://favric.cl
-          - https://laderasdelrupanco.cl    # WordPress en este servidor
-          - https://idrispatagonia.com     # WordPress en otro hosting
-          - https://patagoniafarming.com   # WordPress en otro hosting
-          - https://marandino.com
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+  # ── Sitios WordPress: igual que arriba + verificación de contenido ──
+  # El módulo http_2xx_wordpress exige que el HTML contenga wp-content/
+  # wp-includes: detecta defacement o redirecciones por .htaccess hackeado
+  # (alerta ContenidoSospechoso).
+  - job_name: blackbox_wordpress
+    metrics_path: /probe
+    params:
+      module: [http_2xx_wordpress]
+    static_configs:
+      - targets:
+          # ▼▼ Sitios WordPress ▼▼
+          - https://laderasdelrupanco.cl    # en este servidor
+          - https://idrispatagonia.com     # otro hosting
+          - https://patagoniafarming.com   # otro hosting
+          - https://marandino.com          # otro hosting
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
@@ -54,3 +73,26 @@ scrape_configs:
       credentials_file: /etc/prometheus/secrets/laderas.token
     static_configs:
       - targets: ["laderasdelrupanco.cl"]
+
+  # Requiere: echo -n 'TOKEN' > prometheus/secrets/marandino.token
+  - job_name: wp_marandino
+    metrics_path: /wp-json/favric-monitor/v1/metrics
+    scheme: https
+    scrape_interval: 5m
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/secrets/marandino.token
+    static_configs:
+      - targets: ["marandino.com"]
+
+  # Descomenta cuando confirmes el plugin activo en idris y guardes:
+  #   echo -n 'TOKEN' > prometheus/secrets/idris.token
+  # - job_name: wp_idris
+  #   metrics_path: /wp-json/favric-monitor/v1/metrics
+  #   scheme: https
+  #   scrape_interval: 5m
+  #   authorization:
+  #     type: Bearer
+  #     credentials_file: /etc/prometheus/secrets/idris.token
+  #   static_configs:
+  #     - targets: ["idrispatagonia.com"]

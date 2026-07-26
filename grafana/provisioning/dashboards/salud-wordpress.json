@@ -199,10 +199,45 @@
       }
     },
     {
+      "id": 9,
+      "type": "stat",
+      "title": "Integridad de archivos críticos (.htaccess / index.php / wp-config.php)",
+      "gridPos": { "h": 5, "w": 24, "x": 0, "y": 13 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "wp_file_integrity_changed", "legendFormat": "{{file}} · {{instance}}" }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "text": "✓ Sin cambios", "color": "green", "index": 0 },
+                "1": { "text": "⚠ MODIFICADO", "color": "red", "index": 1 }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
       "id": 7,
       "type": "timeseries",
       "title": "Tamaño de base de datos",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         { "refId": "A", "expr": "wp_database_size_bytes", "legendFormat": "{{instance}}" }
@@ -230,7 +265,7 @@
       "id": 8,
       "type": "table",
       "title": "Inventario: versiones y contenido",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 13 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
         { "refId": "A", "expr": "wp_info", "format": "table", "instant": true },

@@ -28,8 +28,26 @@ groups:
           summary: "SSL por vencer: {{ $labels.instance }}"
           description: "El certificado de {{ $labels.instance }} vence en {{ $value | printf \"%.0f\" }} días."
 
+      - alert: ContenidoSospechoso
+        expr: probe_failed_due_to_regex == 1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Contenido sospechoso en {{ $labels.instance }}"
+          description: "{{ $labels.instance }} responde pero su HTML ya no parece WordPress — posible defacement o redirección maliciosa (.htaccess hackeado)."
+
   - name: wordpress
     rules:
+      - alert: ArchivoCriticoModificado
+        expr: wp_file_integrity_changed == 1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Archivo crítico modificado en {{ $labels.instance }}"
+          description: "El archivo {{ $labels.file }} de {{ $labels.instance }} cambió respecto a la línea base. Si fue un cambio legítimo, actualiza la línea base en Ajustes → Favric Monitor."
+
       - alert: PluginsDesactualizados
         expr: wp_plugin_updates_pending > 0
         for: 24h

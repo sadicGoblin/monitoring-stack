@@ -8,6 +8,19 @@ modules:
       follow_redirects: true
       valid_status_codes: []   # vacío = cualquier 2xx
 
+  # Chequeo para sitios WordPress: además de 2xx, exige que el HTML
+  # parezca WordPress. Detecta defacement o redirecciones de hackeo
+  # (ej: .htaccess modificado que manda a un sitio de spam).
+  http_2xx_wordpress:
+    prober: http
+    timeout: 10s
+    http:
+      preferred_ip_protocol: ip4
+      follow_redirects: true
+      valid_status_codes: []
+      fail_if_body_not_matches_regexp:
+        - "wp-content|wp-includes"
+
   # Para endpoints internos que responden 401/403 (igual prueba que están vivos)
   http_alive:
     prober: http

@@ -2,8 +2,8 @@
 /**
  * Plugin Name: Favric Monitor
  * Plugin URI:  https://github.com/sadicGoblin/monitoring-stack
- * Description: Expone métricas internas de WordPress en formato Prometheus, protegidas por token, para el stack de monitoreo (Prometheus + Grafana).
- * Version:     1.0.0
+ * Description: Expone métricas internas de WordPress en formato Prometheus, protegidas por token, para el stack de monitoreo (Prometheus + Grafana). Incluye vigilancia de integridad de archivos críticos.
+ * Version:     1.1.0
  * Author:      Favric
  * License:     GPL-2.0-or-later
  */
@@ -12,9 +12,10 @@ defined( 'ABSPATH' ) || exit;
 
 final class Favric_Monitor {
 
-	const VERSION      = '1.0.0';
+	const VERSION      = '1.1.0';
 	const OPT_TOKEN    = 'favric_monitor_token';
 	const OPT_FAILURES = 'favric_monitor_login_failures';
+	const OPT_BASELINE = 'favric_monitor_file_baseline';
 	const REST_NS      = 'favric-monitor/v1';
 
 	public static function boot() {
@@ -32,6 +33,36 @@ final class Favric_Monitor {
 		}
 		if ( false === get_option( self::OPT_FAILURES ) ) {
 			update_option( self::OPT_FAILURES, 0, false );
+		}
+		self::ensure_baseline();
+	}
+
+	/* ── Integridad de archivos críticos ───────────────────────────── */
+
+	private static function watched_files() {
+		// wp-config.php puede vivir un nivel arriba de ABSPATH.
+		$config = file_exists( ABSPATH . 'wp-config.php' )
+			? ABSPATH . 'wp-config.php'
+			: dirname( ABSPATH ) . '/wp-config.php';
+		return array(
+			'.htaccess'     => ABSPATH . '.htaccess',
+			'index.php'     => ABSPATH . 'index.php',
+			'wp-config.php' => $config,
+		);
+	}
+
+	private static function current_hashes() {
+		$hashes = array();
+		foreach ( self::watched_files() as $name => $path ) {
+			// '' representa "el archivo no existe" — si aparece después, cuenta como cambio.
+			$hashes[ $name ] = ( file_exists( $path ) && is_readable( $path ) ) ? hash_file( 'sha256', $path ) : '';
+		}
+		return $hashes;
+	}
+
+	public static function ensure_baseline( $force = false ) {
+		if ( $force || false === get_option( self::OPT_BASELINE ) ) {
+			update_option( self::OPT_BASELINE, self::current_hashes(), false );
 		}
 	}
 
@@ -166,6 +197,17 @@ final class Favric_Monitor {
 		);
 		$out( 'wp_database_size_bytes', 'Tamano de la base de datos en bytes.', 'gauge', $db_size );
 
+		// Integridad de archivos críticos (hash actual vs línea base guardada).
+		self::ensure_baseline();
+		$baseline = (array) get_option( self::OPT_BASELINE, array() );
+		$current  = self::current_hashes();
+		$m[]      = '# HELP wp_file_integrity_changed Archivo critico modificado respecto a la linea base (0/1).';
+		$m[]      = '# TYPE wp_file_integrity_changed gauge';
+		foreach ( $current as $name => $hash ) {
+			$changed = ( ! array_key_exists( $name, $baseline ) || $baseline[ $name ] !== $hash ) ? 1 : 0;
+			$m[]     = 'wp_file_integrity_changed{file="' . $name . '"} ' . $changed;
+		}
+
 		// Seguridad.
 		$out( 'wp_login_failures_total', 'Intentos de login fallidos desde la activacion del plugin.', 'counter', (int) get_option( self::OPT_FAILURES, 0 ) );
 		$out( 'wp_debug_enabled', 'WP_DEBUG activo (0/1); no deberia estarlo en produccion.', 'gauge', ( defined( 'WP_DEBUG' ) && WP_DEBUG ) ? 1 : 0 );
@@ -191,8 +233,15 @@ final class Favric_Monitor {
 			update_option( self::OPT_TOKEN, wp_generate_password( 48, false, false ), false );
 			echo '<div class="notice notice-success"><p>Token regenerado. Recuerda actualizarlo en Prometheus.</p></div>';
 		}
+		if ( isset( $_POST['favric_monitor_rebaseline'] ) && check_admin_referer( 'favric_monitor_rebaseline' ) ) {
+			self::ensure_baseline( true );
+			echo '<div class="notice notice-success"><p>Línea base actualizada: los archivos actuales quedan como referencia.</p></div>';
+		}
 		$token    = get_option( self::OPT_TOKEN );
 		$endpoint = rest_url( self::REST_NS . '/metrics' );
+		self::ensure_baseline();
+		$baseline = (array) get_option( self::OPT_BASELINE, array() );
+		$current  = self::current_hashes();
 		?>
 		<div class="wrap">
 			<h1>Favric Monitor</h1>
@@ -209,6 +258,38 @@ final class Favric_Monitor {
 					<button type="submit" class="button" name="favric_monitor_regenerate" value="1"
 						onclick="return confirm('¿Regenerar el token? Prometheus dejará de scrapear hasta que lo actualices.');">
 						Regenerar token
+					</button>
+				</p>
+			</form>
+
+			<h2>Integridad de archivos críticos</h2>
+			<p>Compara el hash actual de cada archivo contra la línea base guardada. Un cambio inesperado puede indicar un sitio comprometido.</p>
+			<table class="widefat striped" style="max-width: 600px">
+				<thead><tr><th>Archivo</th><th>Estado</th></tr></thead>
+				<tbody>
+				<?php foreach ( $current as $name => $hash ) : ?>
+					<?php $changed = ( ! array_key_exists( $name, $baseline ) || $baseline[ $name ] !== $hash ); ?>
+					<tr>
+						<td><code><?php echo esc_html( $name ); ?></code></td>
+						<td>
+							<?php if ( '' === $hash && isset( $baseline[ $name ] ) && '' === $baseline[ $name ] ) : ?>
+								— no existe (normal en algunos hostings)
+							<?php elseif ( $changed ) : ?>
+								<strong style="color:#b32d2e">⚠ MODIFICADO desde la línea base</strong>
+							<?php else : ?>
+								<span style="color:#00a32a">✓ Sin cambios</span>
+							<?php endif; ?>
+						</td>
+					</tr>
+				<?php endforeach; ?>
+				</tbody>
+			</table>
+			<form method="post">
+				<?php wp_nonce_field( 'favric_monitor_rebaseline' ); ?>
+				<p>
+					<button type="submit" class="button" name="favric_monitor_rebaseline" value="1"
+						onclick="return confirm('Usar los archivos ACTUALES como nueva referencia. Hazlo solo si verificaste que los cambios son legítimos (ej: después de una actualización). ¿Continuar?');">
+						Actualizar línea base
 					</button>
 				</p>
 			</form>
