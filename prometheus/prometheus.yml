@@ -85,14 +85,13 @@ scrape_configs:
     static_configs:
       - targets: ["marandino.com"]
 
-  # Descomenta cuando confirmes el plugin activo en idris y guardes:
-  #   echo -n 'TOKEN' > prometheus/secrets/idris.token
-  # - job_name: wp_idris
-  #   metrics_path: /wp-json/favric-monitor/v1/metrics
-  #   scheme: https
-  #   scrape_interval: 5m
-  #   authorization:
-  #     type: Bearer
-  #     credentials_file: /etc/prometheus/secrets/idris.token
-  #   static_configs:
-  #     - targets: ["idrispatagonia.com"]
+  # Requiere: echo -n 'TOKEN' > prometheus/secrets/idris.token
+  - job_name: wp_idris
+    metrics_path: /wp-json/favric-monitor/v1/metrics
+    scheme: https
+    scrape_interval: 5m
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/secrets/idris.token
+    static_configs:
+      - targets: ["idrispatagonia.com"]
